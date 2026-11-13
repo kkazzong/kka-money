@@ -27,11 +27,12 @@
           <div class="coin-reserve" id="coinReserve" role="progressbar" aria-label="오늘의 코인 적립률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="coin-fill" id="coinFill"><div class="coin-pattern"></div></div>
           </div>
-          <div class="coin-caption"><strong id="coinPercent">0%</strong><span>오늘의 코인 · 1시간마다 차곡차곡</span></div>
+          <div class="coin-caption"><strong id="coinPercent">0%</strong><span id="coinCaption">오늘의 코인 · 1시간마다 차곡차곡</span></div>
           <div class="spark spark-one">✦</div><div class="spark spark-two">✧</div><div class="spark spark-three">·</div>
           <div class="speech-bubble" id="speechBubble">새근새근<br /><strong>꿈에서도 차곡차곡…</strong></div>
           <div class="robot-shadow"></div>
           <div class="robot">
+            <span class="mood-prop" aria-hidden="true"></span>
             <span class="sleep-marks" aria-hidden="true">Z<span>z</span><small>z</small></span>
             <div class="antenna"><i></i></div>
             <div class="robot-head">
@@ -47,7 +48,12 @@
       <section class="dashboard-grid">
         <div class="earnings-card card">
           <div class="card-heading"><div><p class="label">오늘 모은 코인</p><h2 id="earnedToday">₩0</h2></div><span class="coin-icon">₩</span></div>
-          <div class="rate-row"><span>분당</span><strong id="perMinute">₩0</strong><span class="rate-badge">자동 계산</span></div>
+          <fieldset class="earning-units" aria-label="코인 보기 옵션">
+            <label><input type="radio" name="earningUnit" value="second" /><span>초당 보기</span></label>
+            <label><input type="radio" name="earningUnit" value="minute" /><span>분당 보기</span></label>
+            <label><input type="radio" name="earningUnit" value="hour" checked /><span>시간당 보기</span></label>
+          </fieldset>
+          <div class="rate-row"><span id="rateLabel">시간당</span><strong id="perMinute">₩0</strong><span class="rate-badge">자동 계산</span></div>
           <div class="progress-track"><span id="progressBar"></span></div>
           <p class="tiny-note"><span class="pulse"></span> <span id="elapsedText">아직 시작 전이에요</span></p>
         </div>
