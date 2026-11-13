@@ -14,6 +14,8 @@ const progressBar = document.querySelector('#progressBar');
 const elapsedText = document.querySelector('#elapsedText');
 const startButton = document.querySelector('#startButton');
 const saveButton = document.querySelector('#saveButton');
+const resetButton = document.querySelector('#resetButton');
+const storageStatus = document.querySelector('#storageStatus');
 const speechBubble = document.querySelector('#speechBubble');
 const statusText = document.querySelector('#statusText');
 const robotStage = document.querySelector('.robot-stage');
@@ -23,6 +25,30 @@ const coinReserve = document.querySelector('#coinReserve');
 
 let startedAt = null;
 let timer = null;
+const storageKey = 'kka-money.settings.v1';
+const settingInputs = [botNameInput, salaryInput, daysInput, startTimeInput, endTimeInput];
+const defaultValues = settingInputs.map((input) => input.value);
+const saveSettings = () => {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(settingInputs.map((input) => [input.id, input.value]))));
+    storageStatus.textContent = '입력한 정보는 이 브라우저에 자동 저장돼요.';
+    return true;
+  } catch {
+    storageStatus.textContent = '브라우저 저장소를 사용할 수 없어 정보를 저장하지 못했어요.';
+    return false;
+  }
+};
+const restoreSettings = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return;
+    settingInputs.forEach((input) => {
+      if (typeof saved[input.id] === 'string') input.value = saved[input.id];
+    });
+  } catch {
+    storageStatus.textContent = '저장된 정보를 불러오지 못했어요. 다시 입력해 주세요.';
+  }
+};
 const won = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
 const number = (value) => Math.max(0, Number(String(value).replace(/,/g, '')) || 0);
 const settings = () => {
@@ -86,9 +112,31 @@ startButton.addEventListener('click', () => {
   }
   render();
 });
-saveButton.addEventListener('click', () => { render(); saveButton.innerHTML = '저장했어요 <span>✓</span>'; setTimeout(() => { saveButton.innerHTML = '설정 저장하기 <span>→</span>'; }, 1800); });
-[botNameInput, salaryInput, daysInput, startTimeInput, endTimeInput].forEach((input) => input.addEventListener('input', render));
-salaryInput.addEventListener('input', formatSalary);
+saveButton.addEventListener('click', () => {
+  formatSalary();
+  render();
+  saveButton.textContent = saveSettings() ? '저장했어요 ✓' : '저장하지 못했어요';
+  setTimeout(() => { saveButton.innerHTML = '저장할래요 <span>→</span>'; }, 1800);
+});
+resetButton.addEventListener('click', () => {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    storageStatus.textContent = '저장된 정보를 지우지 못했어요. 브라우저 저장소 설정을 확인해 주세요.';
+    return;
+  }
+  settingInputs.forEach((input, index) => { input.value = defaultValues[index]; });
+  if (startedAt) startButton.click();
+  formatSalary();
+  render();
+  storageStatus.textContent = '저장된 정보를 지우고 기본값으로 초기화했어요.';
+});
+settingInputs.forEach((input) => input.addEventListener('input', () => {
+  if (input === salaryInput) formatSalary();
+  render();
+  saveSettings();
+}));
 salaryInput.addEventListener('blur', formatSalary);
+restoreSettings();
 formatSalary();
 render();
