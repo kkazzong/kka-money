@@ -1,4 +1,10 @@
 const salaryInput = document.querySelector('#salary');
+const botNameInput = document.querySelector('#botName');
+const botNameText = document.querySelector('#botNameText');
+const botName = () => {
+  const name = botNameInput.value.trim();
+  return name ? (name.endsWith('봇') ? name : `${name}봇`) : '머니봇';
+};
 const daysInput = document.querySelector('#days');
 const startTimeInput = document.querySelector('#startTime');
 const endTimeInput = document.querySelector('#endTime');
@@ -10,6 +16,10 @@ const startButton = document.querySelector('#startButton');
 const saveButton = document.querySelector('#saveButton');
 const speechBubble = document.querySelector('#speechBubble');
 const statusText = document.querySelector('#statusText');
+const robotStage = document.querySelector('.robot-stage');
+const coinFill = document.querySelector('#coinFill');
+const coinPercent = document.querySelector('#coinPercent');
+const coinReserve = document.querySelector('#coinReserve');
 
 let startedAt = null;
 let timer = null;
@@ -41,23 +51,43 @@ const elapsedWorkSeconds = (now, startMinutes, endMinutes, workMinutes) => {
   return Math.min(Math.max(elapsed * 60, 0), workMinutes * 60);
 };
 const render = () => {
+  const name = botName();
+  botNameText.textContent = name;
+  startButton.textContent = `${name} ${startedAt ? '잠재우기' : '깨우기'} `;
+  const icon = document.createElement('span');
+  icon.textContent = startedAt ? '☾' : '✦';
+  startButton.append(icon);
+  robotStage.setAttribute('aria-label', `${startedAt ? '깨어 있는' : '잠자는'} ${name}`);
   const { minute, day, workMinutes, startMinutes, endMinutes } = calculate();
   perMinute.textContent = won.format(minute);
-  if (!startedAt) { earnedToday.textContent = won.format(0); progressBar.style.width = '0%'; elapsedText.textContent = '머니봇을 깨우면 현재 시각 기준으로 계산해요'; return; }
-  const elapsedSeconds = elapsedWorkSeconds(new Date(), startMinutes, endMinutes, workMinutes);
-  const earned = Math.min(day, minute * elapsedSeconds / 60);
+  const elapsedSeconds = startedAt ? elapsedWorkSeconds(new Date(), startMinutes, endMinutes, workMinutes) : 0;
+  const elapsedMinutes = elapsedSeconds / 60;
+  const completedMinutes = elapsedMinutes >= workMinutes ? workMinutes : Math.floor(elapsedMinutes / 60) * 60;
+  const percent = Math.min(100, Math.round(completedMinutes / workMinutes * 100));
+  coinFill.style.height = `${percent}%`;
+  coinPercent.textContent = `${percent}%`;
+  coinReserve.setAttribute('aria-valuenow', String(percent));
+  const earned = Math.min(day, minute * completedMinutes);
   earnedToday.textContent = won.format(earned);
-  progressBar.style.width = `${Math.min(100, (elapsedSeconds / (workMinutes * 60)) * 100)}%`;
-  const mins = Math.floor(elapsedSeconds / 60); const secs = Math.floor(elapsedSeconds % 60);
-  elapsedText.textContent = `${mins}분 ${String(secs).padStart(2, '0')}초째 세는 중 · 오늘 목표의 ${Math.min(100, Math.round((earned / day) * 100))}%`;
+  progressBar.style.width = `${percent}%`;
+  const hours = Math.floor(completedMinutes / 60);
+  const remainingMinutes = completedMinutes % 60;
+  elapsedText.textContent = startedAt
+    ? `${hours}시간${remainingMinutes ? ` ${remainingMinutes}분` : ''} 근무 완료 · 오늘 목표의 ${percent}%`
+    : `${name}을 깨우면 1시간 단위로 코인이 쌓여요`;
 };
 startButton.addEventListener('click', () => {
-  if (startedAt) { startedAt = null; clearInterval(timer); timer = null; startButton.innerHTML = '머니봇 깨우기 <span>✦</span>'; statusText.textContent = '잠깐 쉬는 중'; speechBubble.innerHTML = '잠깐<br /><strong>충전할게!</strong>'; }
-  else { startedAt = Date.now(); timer = setInterval(render, 1000); startButton.innerHTML = '머니봇 잠재우기 <span>☾</span>'; statusText.textContent = '오늘도 열일 중'; speechBubble.innerHTML = '돈이<br /><strong>쌓이는 중!</strong>'; }
+  if (startedAt) { startedAt = null; clearInterval(timer); timer = null; }
+  else { startedAt = Date.now(); timer = setInterval(render, 60000); statusText.textContent = '오늘도 열일 중'; speechBubble.innerHTML = '코인이<br /><strong>쌓이는 중!</strong>'; }
+  robotStage.classList.toggle('is-sleeping', !startedAt);
+  if (!startedAt) {
+    statusText.textContent = '새근새근 꿈나라';
+    speechBubble.innerHTML = '새근새근<br /><strong>꿈에서도 차곡차곡…</strong>';
+  }
   render();
 });
 saveButton.addEventListener('click', () => { render(); saveButton.innerHTML = '저장했어요 <span>✓</span>'; setTimeout(() => { saveButton.innerHTML = '설정 저장하기 <span>→</span>'; }, 1800); });
-[salaryInput, daysInput, startTimeInput, endTimeInput].forEach((input) => input.addEventListener('input', render));
+[botNameInput, salaryInput, daysInput, startTimeInput, endTimeInput].forEach((input) => input.addEventListener('input', render));
 salaryInput.addEventListener('input', formatSalary);
 salaryInput.addEventListener('blur', formatSalary);
 formatSalary();
