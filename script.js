@@ -90,32 +90,44 @@ const elapsedWorkSeconds = (now, startMinutes, endMinutes, workMinutes) => {
   }
   return Math.min(Math.max(elapsed * 60, 0), workMinutes * 60);
 };
+const workMoodMessages = JSON.parse(document.querySelector('#workMoodMessages').textContent);
+let activeMoodPhase;
+let activeMoodMessage;
+
 const workMood = (elapsedMinutes, workMinutes, beforeWork) => {
-  if (!startedAt) return { state: 'sleeping', status: '새근새근 꿈나라', message: '새근새근<br /><strong>꿈에서도 차곡차곡…</strong>' };
-  if (beforeWork) return { state: 'sleepy', status: '출근 준비 중', message: '아직 이불이 좋은데…<br /><strong>출근 준비는 꼬물꼬물!</strong>' };
-  if (elapsedMinutes >= workMinutes) return { state: 'home', status: '오늘도 수고했어요', message: '오늘의 나, 제법 멋졌어!<br /><strong>이제 집으로 총총 ♡</strong>' };
-  if (workMinutes - elapsedMinutes <= 60) return { state: 'excited', status: '퇴근 생각에 두근두근', message: '마음은 벌써 현관 앞!<br /><strong>집아, 조금만 기다려 ♡</strong>' };
-  if (elapsedMinutes < 60) return { state: 'sleepy', status: '아직은 졸려요', message: '하아암… 눈 비비고<br /><strong>오늘도 출근 도장 꾹!</strong>' };
-  if (elapsedMinutes < 120) return { state: 'coffee', status: '커피 충전 중', message: '커피 한 모금, 꼴깍 ☕<br /><strong>이제 눈이 좀 떠진다!</strong>' };
-  if (elapsedMinutes < 180) return { state: 'lunch', status: '점심 메뉴 고민 중', message: '머릿속엔 메뉴판이 둥둥…<br /><strong>오늘 점심 뭐 먹지? 🍚</strong>' };
-  if (elapsedMinutes < 240) return { state: 'focused', status: '집중력 반짝반짝', message: '점심 생각은 잠깐 접고<br /><strong>할 일 하나씩 뚝딱! ✨</strong>' };
-  return { state: 'tired', status: '다크서클 적립 중', message: elapsedMinutes < 360
-    ? '코인은 차곡, 피로도 차곡…<br /><strong>내 눈 밑에 그늘이 생겼어!</strong>'
-    : '다크서클이 무럭무럭…<br /><strong>퇴근 요정아, 오고 있지? 🥺</strong>' };
+  if (!startedAt) return 'sleeping';
+  if (beforeWork) return 'gettingReady';
+  if (elapsedMinutes >= workMinutes) return 'home';
+  if (workMinutes - elapsedMinutes <= 60) return 'excited';
+  if (elapsedMinutes < 60) return 'sleepy';
+  if (elapsedMinutes < 120) return 'coffee';
+  if (elapsedMinutes < 180) return 'lunch';
+  if (elapsedMinutes < 240) return 'focused';
+  return elapsedMinutes < 360 ? 'tired' : 'veryTired';
 };
+const moodAnimations = { gettingReady: 'sleepy', veryTired: 'tired' };
 const renderMood = (now, elapsedMinutes, workMinutes, startMinutes, endMinutes) => {
   const currentMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   const beforeWork = startMinutes < endMinutes && currentMinutes < startMinutes;
-  const mood = workMood(elapsedMinutes, workMinutes, beforeWork);
-  robotStage.dataset.mood = mood.state;
+  const phase = workMood(elapsedMinutes, workMinutes, beforeWork);
+  const state = moodAnimations[phase] ?? phase;
+  if (phase !== activeMoodPhase) {
+    activeMoodPhase = phase;
+    const messages = workMoodMessages[phase];
+    activeMoodMessage = messages[Math.floor(Math.random() * messages.length)];
+    const [firstLine, secondLine] = activeMoodMessage.message;
+    const emphasis = document.createElement('strong');
+    emphasis.textContent = secondLine;
+    speechBubble.replaceChildren(firstLine, document.createElement('br'), emphasis);
+  }
+  robotStage.dataset.mood = state;
   robotStage.classList.toggle('is-sleeping', !startedAt);
   // Grow the shadows throughout the tired phase, then clear them for the last hour.
-  const fatigue = mood.state === 'tired' ? Math.min(1, Math.max(0, (elapsedMinutes - 240) / Math.max(1, workMinutes - 300))) : 0;
+  const fatigue = state === 'tired' ? Math.min(1, Math.max(0, (elapsedMinutes - 240) / Math.max(1, workMinutes - 300))) : 0;
   robotStage.style.setProperty('--dark-circle-drop', `${4 + fatigue * 14}px`);
   robotStage.style.setProperty('--dark-circle-opacity', String(0.3 + fatigue * 0.45));
-  robotStage.setAttribute('aria-label', `${botName()} · ${mood.status}`);
-  statusText.textContent = mood.status;
-  if (speechBubble.innerHTML !== mood.message) speechBubble.innerHTML = mood.message;
+  robotStage.setAttribute('aria-label', `${botName()} · ${activeMoodMessage.status}`);
+  statusText.textContent = activeMoodMessage.status;
 };
 const render = () => {
   const name = botName();
@@ -191,6 +203,23 @@ unitInputs.forEach((input) => input.addEventListener('change', () => {
   render();
   saveSettings();
 }));
+const robotDate = document.querySelector('#robotDate');
+const robotDateFormatter = new Intl.DateTimeFormat('ko-KR', {
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+});
+const updateRobotDate = () => {
+  const now = new Date();
+  robotDate.textContent = robotDateFormatter.format(now);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  robotDate.dateTime = `${now.getFullYear()}-${month}-${day}`;
+
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  setTimeout(updateRobotDate, midnight - now);
+};
+updateRobotDate();
 restoreSettings();
 formatSalary();
 render();
